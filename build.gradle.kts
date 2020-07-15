@@ -16,7 +16,18 @@ dependencies {
     implementation("io.github.microutils:kotlin-logging:1.7.9")
     implementation("io.projectreactor:reactor-core:3.3.6.RELEASE")
     implementation("io.projectreactor.kotlin:reactor-kotlin-extensions:1.0.2.RELEASE")
+    implementation("org.apache.commons:commons-lang3:3.10")
     implementation("org.springframework.data:spring-data-commons:2.3.1.RELEASE")
+    testImplementation("io.mockk:mockk:1.10.0")
+    testImplementation("org.hamcrest:hamcrest:2.2")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.6.2")
+}
+
+tasks.test {
+    useJUnitPlatform()
+    testLogging {
+        events("passed", "skipped", "failed")
+    }
 }
 
 tasks {
