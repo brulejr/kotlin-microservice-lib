@@ -4,6 +4,7 @@ plugins {
 
 group = "io.jrb"
 version = "1.0-SNAPSHOT"
+java.sourceCompatibility = JavaVersion.VERSION_1_8
 
 repositories {
     mavenCentral()
