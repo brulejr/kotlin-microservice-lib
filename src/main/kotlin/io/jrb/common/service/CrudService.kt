@@ -28,7 +28,7 @@ abstract class CrudService<ENTITY: Entity, RESOURCE: Resource>(
 
     private val log = KotlinLogging.logger {}
 
-    fun create(resource: RESOURCE): Mono<RESOURCE> {
+    open fun create(resource: RESOURCE): Mono<RESOURCE> {
         val timestamp: Instant = Instant.now()
         val entity = createEntityBuilder(resource)
                 .guid(UUID.randomUUID())
@@ -40,27 +40,27 @@ abstract class CrudService<ENTITY: Entity, RESOURCE: Resource>(
                 .onErrorResume(serviceErrorHandler("Unexpected error when creating $entityName"))
     }
 
-    fun delete(guid: UUID): Mono<Void> {
+    open fun delete(guid: UUID): Mono<Void> {
         return entityRepository.findByGuid(guid)
                 .switchIfEmpty(Mono.error(ResourceNotFoundException(entityName, guid)))
                 .flatMap { entityRepository.delete(it) }
                 .onErrorResume(serviceErrorHandler("Unexpected error when deleting $entityName"))
     }
 
-    fun findByGuid(guid: UUID): Mono<RESOURCE> {
+    open fun findByGuid(guid: UUID): Mono<RESOURCE> {
         return entityRepository.findByGuid(guid)
                 .switchIfEmpty(Mono.error(ResourceNotFoundException(entityName, guid)))
                 .map { createResourceBuilder(it).build() }
                 .onErrorResume(serviceErrorHandler("Unexpected error when finding $entityName"))
     }
 
-    fun listAll(): Flux<RESOURCE> {
+    open fun listAll(): Flux<RESOURCE> {
         return entityRepository.findAll(Sort.by("title"))
                 .map { createResourceBuilder(it).build() }
                 .onErrorResume(serviceErrorHandler("Unexpected error when retrieving $entityName"))
     }
 
-    fun update(guid: UUID, patch: JsonPatch): Mono<RESOURCE> {
+    open fun update(guid: UUID, patch: JsonPatch): Mono<RESOURCE> {
         return entityRepository.findByGuid(guid)
                 .map { entity : ENTITY ->
                     val resource : RESOURCE = createResourceBuilder(entity).build()
