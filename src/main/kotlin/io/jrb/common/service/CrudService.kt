@@ -28,53 +28,71 @@ abstract class CrudService<ENTITY: Entity, RESOURCE: Resource>(
 
     private val log = KotlinLogging.logger {}
 
-    open fun create(resource: RESOURCE): Mono<RESOURCE> {
-        val timestamp: Instant = Instant.now()
-        val entity = createEntityBuilder(resource)
-                .guid(UUID.randomUUID())
-                .createdOn(timestamp)
-                .modifiedOn(timestamp)
-                .build()
-        return entityRepository.save(entity)
-                .map { createResourceBuilder(it).build() }
-                .onErrorResume(serviceErrorHandler("Unexpected error when creating $entityName"))
+    fun create(
+        resource: RESOURCE,
+        inboundHook: (RESOURCE) -> RESOURCE = { x -> x },
+        outboundHook: (RESOURCE) -> RESOURCE = { x -> x }
+    ): Mono<RESOURCE> {
+        return Mono.just(inboundHook(resource))
+            .map {
+                val timestamp: Instant = Instant.now()
+                createEntityBuilder(it)
+                    .guid(UUID.randomUUID())
+                    .createdOn(timestamp)
+                    .modifiedOn(timestamp)
+                    .build()
+            }
+            .flatMap { entityRepository.save(it) }
+            .map { createResourceBuilder(it).build() }
+            .map(outboundHook)
+            .onErrorResume(serviceErrorHandler("Unexpected error when creating $entityName"))
     }
 
-    open fun delete(guid: UUID): Mono<Void> {
+    fun delete(guid: UUID): Mono<Void> {
         return entityRepository.findByGuid(guid)
-                .switchIfEmpty(Mono.error(ResourceNotFoundException(entityName, guid)))
-                .flatMap { entityRepository.delete(it) }
-                .onErrorResume(serviceErrorHandler("Unexpected error when deleting $entityName"))
+            .switchIfEmpty(Mono.error(ResourceNotFoundException(entityName, guid)))
+            .flatMap { entityRepository.delete(it) }
+            .onErrorResume(serviceErrorHandler("Unexpected error when deleting $entityName"))
     }
 
-    open fun findByGuid(guid: UUID): Mono<RESOURCE> {
+    fun findByGuid(
+        guid: UUID,
+        outboundHook: (RESOURCE) -> RESOURCE = { x -> x }
+    ): Mono<RESOURCE> {
         return entityRepository.findByGuid(guid)
-                .switchIfEmpty(Mono.error(ResourceNotFoundException(entityName, guid)))
-                .map { createResourceBuilder(it).build() }
-                .onErrorResume(serviceErrorHandler("Unexpected error when finding $entityName"))
+            .switchIfEmpty(Mono.error(ResourceNotFoundException(entityName, guid)))
+            .map { createResourceBuilder(it).build() }
+            .map(outboundHook)
+            .onErrorResume(serviceErrorHandler("Unexpected error when finding $entityName"))
     }
 
-    open fun listAll(): Flux<RESOURCE> {
+    fun listAll(outboundHook: (RESOURCE) -> RESOURCE = { x -> x }): Flux<RESOURCE> {
         return entityRepository.findAll(Sort.by("title"))
-                .map { createResourceBuilder(it).build() }
-                .onErrorResume(serviceErrorHandler("Unexpected error when retrieving $entityName"))
+            .map { createResourceBuilder(it).build() }
+            .map(outboundHook)
+            .onErrorResume(serviceErrorHandler("Unexpected error when retrieving $entityName"))
     }
 
-    open fun update(guid: UUID, patch: JsonPatch): Mono<RESOURCE> {
+    fun update(
+        guid: UUID,
+        patch: JsonPatch,
+        outboundHook: (RESOURCE) -> RESOURCE = { x -> x }
+    ): Mono<RESOURCE> {
         return entityRepository.findByGuid(guid)
-                .map { entity : ENTITY ->
-                    val resource : RESOURCE = createResourceBuilder(entity).build()
-                    val updatedResource : RESOURCE = applyPatch(guid, resource, patch)
-                    createEntityBuilder(updatedResource)
-                            .id(entity.id)
-                            .guid(guid)
-                            .createdOn(entity.createdOn)
-                            .modifiedOn(Instant.now())
-                            .build()
-                }
-                .flatMap { entityRepository.save(it) }
-                .map { createResourceBuilder(it).build() }
-                .onErrorResume(serviceErrorHandler("Unexpected error when updating $entityName"))
+            .map { entity : ENTITY ->
+                val resource : RESOURCE = createResourceBuilder(entity).build()
+                val updatedResource : RESOURCE = applyPatch(guid, resource, patch)
+                createEntityBuilder(updatedResource)
+                        .id(entity.id)
+                        .guid(guid)
+                        .createdOn(entity.createdOn)
+                        .modifiedOn(Instant.now())
+                        .build()
+            }
+            .flatMap { entityRepository.save(it) }
+            .map { createResourceBuilder(it).build() }
+            .map(outboundHook)
+            .onErrorResume(serviceErrorHandler("Unexpected error when updating $entityName"))
     }
 
     private fun applyPatch(guid: UUID, resource: RESOURCE, patch: JsonPatch): RESOURCE {
