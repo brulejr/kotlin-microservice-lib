@@ -28,10 +28,13 @@ abstract class CrudService<ENTITY: Entity, RESOURCE: Resource>(
 
     private val log = KotlinLogging.logger {}
 
+    protected val DEFAULT_INBOUND_HOOK: (RESOURCE) -> RESOURCE = { x -> x }
+    protected val DEFAULT_OUTBOUND_HOOK: (RESOURCE) -> RESOURCE = { x -> x }
+
     protected fun create(
         resource: RESOURCE,
-        inboundHook: (RESOURCE) -> RESOURCE = { x -> x },
-        outboundHook: (RESOURCE) -> RESOURCE = { x -> x }
+        inboundHook: (RESOURCE) -> RESOURCE,
+        outboundHook: (RESOURCE) -> RESOURCE
     ): Mono<RESOURCE> {
         return Mono.just(inboundHook(resource))
             .map {
@@ -57,7 +60,7 @@ abstract class CrudService<ENTITY: Entity, RESOURCE: Resource>(
 
     protected fun findByGuid(
         guid: UUID,
-        outboundHook: (RESOURCE) -> RESOURCE = { x -> x }
+        outboundHook: (RESOURCE) -> RESOURCE
     ): Mono<RESOURCE> {
         return entityRepository.findByGuid(guid)
             .switchIfEmpty(Mono.error(ResourceNotFoundException(entityName, guid)))
@@ -66,7 +69,7 @@ abstract class CrudService<ENTITY: Entity, RESOURCE: Resource>(
             .onErrorResume(serviceErrorHandler("Unexpected error when finding $entityName"))
     }
 
-    protected fun listAll(outboundHook: (RESOURCE) -> RESOURCE = { x -> x }): Flux<RESOURCE> {
+    protected fun listAll(outboundHook: (RESOURCE) -> RESOURCE): Flux<RESOURCE> {
         return entityRepository.findAll(Sort.by("title"))
             .map { createResourceBuilder(it).build() }
             .map(outboundHook)
@@ -76,7 +79,7 @@ abstract class CrudService<ENTITY: Entity, RESOURCE: Resource>(
     protected fun update(
         guid: UUID,
         patch: JsonPatch,
-        outboundHook: (RESOURCE) -> RESOURCE = { x -> x }
+        outboundHook: (RESOURCE) -> RESOURCE
     ): Mono<RESOURCE> {
         return entityRepository.findByGuid(guid)
             .map { entity : ENTITY ->
