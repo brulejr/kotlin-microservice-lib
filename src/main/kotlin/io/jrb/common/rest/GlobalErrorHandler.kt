@@ -1,5 +1,6 @@
 package io.jrb.common.rest
 
+import com.google.common.base.VerifyException
 import io.jrb.common.resource.ErrorResponseEntity
 import io.jrb.common.service.DuplicateResourceException
 import io.jrb.common.service.InvalidResourceException
@@ -26,5 +27,8 @@ class GlobalErrorHandler {
 
     @ExceptionHandler(ServiceException::class)
     fun forumException(exception: ServiceException) = ErrorResponseEntity.serverError(exception.message)
+
+    @ExceptionHandler(VerifyException::class)
+    fun forumException(exception: VerifyException) = ErrorResponseEntity.badRequest(exception.message)
 
 }
