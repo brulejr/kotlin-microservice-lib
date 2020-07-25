@@ -24,6 +24,9 @@ class ErrorResponseEntity(body: ErrorResponse) : ResponseEntity<ErrorResponse>(b
 
     companion object {
 
+        fun conflict(message: String?) =
+            ErrorResponseEntity(ErrorResponse(HttpStatus.CONFLICT, message))
+
         fun badRequest(message: String?) =
                 ErrorResponseEntity(ErrorResponse(HttpStatus.BAD_REQUEST, message))
 
